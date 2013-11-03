@@ -68,16 +68,6 @@ Domain.prototype = {
 	},
 };
 
-function ReaLocation(url) {
-	var data = this._parse((url || location).toString());
-	console.log(JSON.stringify(data));
-	for(var key in data) {
-		if(data.hasOwnProperty(key)) {
-			this[key] = data[key];
-		}
-	}
-}
-
 function Path(path) {
 	this.dirs = [];
 	if(path.substr(0, 1) == "/") {
@@ -102,12 +92,83 @@ Path.prototype = {
 	}
 };
 
+function Port(port) {
+	console.log("port: " + port);
+	if(/^\d+$/.test(port)) {
+		this.number = port;
+	} else {
+		this.number = Port.service2port[port];
+	}
+}
+
+Port.port2service = {
+1:	"tcpmux",		5:	"rje",			7:	"echo",			9:	"discard",
+11:	"systat",		13:	"daytime",		17:	"qotd",			18:	"msp",
+19:	"chargen",		20:	"ftp-data",		21:	"ftp",			22:	"ssh",
+23:	"telnet",		25:	"smtp",			37:	"time",			39:	"rlp",
+42:	"nameserver",		43:	"nicname",		49:	"tacacs",		50:	"re-mail-ck",
+53:	"domain",		63:	"whois++",		67:	"bootps",		68:	"bootpc",
+69:	"tftp",			70:	"gopher",		71:	"netrjs-1",		72:	"netrjs-2",
+73:	"netrjs-3",		73:	"netrjs-4",		79:	"finger",		80:	"http",
+88:	"kerberos",		95:	"supdup",		101:	"hostname",		102:	"iso-tsap",
+105:	"csnet-ns",		107:	"rtelnet",		109:	"pop2",			110:	"pop3",
+111:	"sunrpc",		113:	"auth",			115:	"sftp",			117:	"uucp-path",
+119:	"nntp",			123:	"ntp",			137:	"netbios-ns",		138:	"netbios-dgm",
+139:	"netbios-ssn",		143:	"imap",			161:	"snmp",			162:	"snmptrap",
+163:	"cmip-man",		164:	"cmip-agen",		174:	"mailq",		177:	"xdmcp",
+178:	"nextstep",		179:	"bgp",			191:	"prospero",		194:	"irc",
+199:	"smux",			201:	"at-rtmp",		202:	"at-nbp",		204:	"at-echo",
+206:	"at-zis",		209:	"qmtp",			210:	"z39.50",		213:	"ipx",
+220:	"imap3",		245:	"link",			347:	"fatserv",		363:	"rsvp_tunnel",
+369:	"rpc2portmap",		370:	"codaauth2",		372:	"ulistproc",		389:	"ldap",
+427:	"svrloc",		434:	"mobileip-agent",	435:	"mobilip-mn",		443:	"https",
+444:	"snpp",			445:	"microsoft-ds",		464:	"kpasswd",		468:	"photuris",
+487:	"saft",			488:	"gss-http",		496:	"pim-rp-disc",		500:	"isakmp",
+535:	"iiop",			538:	"gdomap",		546:	"dhcpv6-client",	547:	"dhcpv6-server",
+554:	"rtsp",			563:	"nntps",		565:	"whoami",		587:	"submission",
+610:	"npmp-local",		611:	"npmp-gui",		612:	"hmmp-ind",		631:	"ipp",
+636:	"ldaps",		674:	"acap",			694:	"ha-cluster",		749:	"kerberos-adm",
+750:	"kerberos-iv",		765:	"webster",		767:	"phonebook",		873:	"rsync",
+992:	"telnets",		993:	"imaps",		994:	"ircs",			995:	"pop3s",
+};
+
+Port.service2port = {};
+
+for(var num in Port.port2service) {
+	if(Port.port2service[num] != null) {
+		Port.service2port[Port.port2service[num]] = num;
+	}
+}
+
+Port.prototype = {
+	get service() {
+		return Port.port2service[this.number];
+	},
+	set service(data) {
+		this.number = Port.service2port[data];
+	},
+	toString:	function() {
+		return this.number + "";
+	}
+};
+
+function ReaLocation(url) {
+	var data = this._parse((url || location).toString());
+	console.log(JSON.stringify(data));
+	for(var key in data) {
+		if(data.hasOwnProperty(key)) {
+			if(data[key] == null) continue;
+			this[key] = data[key];
+		}
+	}
+}
+
 ReaLocation.defaults = {
 	proto:		"http",
 	user:		"",
 	password:	"",
 	host:		new Domain(""),
-	port:		80,
+	port:		new Port(80),
 	path:		new Path("/"),
 	queryString:	new QS(""),
 	hash:		"",
@@ -134,12 +195,13 @@ ReaLocation.prototype = {
 	},
 	_parse:		function(url) {
 		var data = url.match(RegExp("^(\\w+)://(?:([^@:]+)(?::([^@]+))?@)?((?:[\\w]+)(?:\\.(?:[\\w]+))+)?(?::(\\d+))?(?:([^?]+))?(?:\\?([^#]+))?(?:#(.+))?$", "i"));
+		console.log(JSON.stringify(data));
 		return {
 			proto:		data[1],
 			user:		data[2],
 			password:	data[3],
 			host:		new Domain(data[4]),
-			port:		data[5],
+			port:		data[5] ? new Port(data[5]) : null,
 			path:		data[6],
 			queryString:	new QS(data[7]),
 			hash:		data[8],
