@@ -12,7 +12,13 @@ function QS(obj) {
 		var arr = obj.split("&");
 		for(var i = 0; i < arr.length; i++) {
 			var data = arr[i].split("=");
-			this[data[0]] = data[1] || "";
+			var new_name;
+			if(new_name = data[0].replace(/\[\d*\]/, "")) {
+				if(this[new_name] == null) this[new_name] = [];
+				this[new_name].push(data[1]);
+			} else {
+				this[data[0]] = data[1] || "";
+			}
 		}
 		return;
 	}
@@ -30,10 +36,35 @@ QS.prototype = {
 		var arr = [];
 		for(var key in this) {
 			if(this.hasOwnProperty(key)) {
-				arr.push(key + "=" + this[key]);
+				if(this[key] instanceof Array) {
+					for(var i = 0; i < this[key].length; i++) {
+						arr.push(key + "[" + i + "]=" + this[key][i]);
+					}
+				} else {
+					arr.push(key + "=" + this[key]);
+				}
 			}
 		}
 		return arr.join("&");
+	},
+};
+
+function Domain(domain) {
+	var arr = domain.split(".");
+	var tmp = [];
+	this.levels = [];
+	this.parts = [];
+	for(var i = arr.length - 1; i >= 0; i--) {
+		tmp.unshift(arr[i]);
+		this.parts.unshift(arr[i]);
+		this.levels.push(tmp.join("."));
+	}
+	this.hostname = this.levels[this.levels.length - 1];
+}
+
+Domain.prototype = {
+	toString:	function() {
+		return this.hostname;
 	},
 };
 
@@ -46,14 +77,39 @@ function ReaLocation(url) {
 		}
 	}
 }
+
+function Path(path) {
+	this.dirs = [];
+	if(path.substr(0, 1) == "/") {
+		this.is_absolute = true;
+		//this.dirs.push(null);
+	}
+	var arr = path.split("/");
+	for(var i = 0; i < arr.length; i++) {
+		if(arr[i] != null) {
+			this.dirs.push(arr[i]);
+		}
+	}
+}
+
+Path.prototype = {
+	is_absolute:	false,
+	get is_relative() {
+		return !this.is_absolute;
+	},
+	toString:	function() {
+		return this.dirs.join("/");
+	}
+};
+
 ReaLocation.defaults = {
 	proto:		"http",
 	user:		"",
 	password:	"",
-	host:		"",
+	host:		new Domain(""),
 	port:		80,
-	path:		"/",
-	queryString:	"",
+	path:		new Path("/"),
+	queryString:	new QS(""),
 	hash:		"",
 };
 
@@ -82,7 +138,7 @@ ReaLocation.prototype = {
 			proto:		data[1],
 			user:		data[2],
 			password:	data[3],
-			host:		data[4],
+			host:		new Domain(data[4]),
 			port:		data[5],
 			path:		data[6],
 			queryString:	new QS(data[7]),
