@@ -174,24 +174,56 @@ ReaLocation.defaults = {
 	hash:		"",
 };
 
+for(var key in ReaLocation.defaults) {
+	if(ReaLocation.defaults[key] instanceof Object) {
+		ReaLocation.defaults[key].is_default = true;
+	}
+}
+
 ReaLocation.prototype = {
-	toString:	function() {
-		var has_user = this._has("user");
-		var str = this.proto + "://"
-			+ (has_user && this._has("host")? this.user + (this._has("password") ? ":" + this.password : "") + "@" : "")
-			+ (this._has("host") ? this.host : "")
-			+ (this._has("port") ? ":" + this.port : "")
-			+ this.path
-			+ (this._has("queryString") ? "?" + this.queryString : "")
-			+ (this._has("hash") ? "#" + this.hash : "");
+	toString:		function() {
+		var str = this._proto_part
+			+ this._auth_part
+			+ this._host_part
+			+ this._port_part
+			+ this._path_part
+			+ this._querstring_part
+			+ this._hash_part
+		;
 		return str;
 	},
-	go:		function() {
+	get _proto_part() {
+		return this.proto + "://";
+	},
+	get _auth_part() {
+		if(!this._has("user") || !this._has("host")) return "";
+		return this.user + (this._has("password") ? ":" + this.password : "") + "@";
+	},
+	get _host_part() {
+		if(!this._has("host")) return "";
+		return this.host;
+	},
+	get _port_part() {
+		if(!this._has("port")) return "";
+		return ":" + this.port;
+	},
+	get _path_part() {
+		return this.path;
+	},
+	get _querstring_part() {
+		if(!this._has("queryString")) return "";
+		return "?" + this.queryString;
+	},
+	get _hash_part() {
+		if(!this._has("hash")) return "";
+		return "#" + this.hash;
+	},
+	go:			function() {
 		window.location = this.toString();
 	},
-	_has:		function(name) {
+	_has:			function(name) {
 		var key = "_" + name;
-		return this[key] != null && this[key] != "";
+		return this[key] != null && this[key] != "" && this[key].toString() !== (ReaLocation.defaults[key]||"").toString();
 	},
 	_parse:		function(url) {
 		var data = url.match(RegExp("^(\\w+)://(?:([^@:]+)(?::([^@]+))?@)?((?:[\\w]+)(?:\\.(?:[\\w]+))+)?(?::(\\d+))?(?:([^?]+))?(?:\\?([^#]+))?(?:#(.+))?$", "i"));
@@ -201,7 +233,7 @@ ReaLocation.prototype = {
 			user:		data[2],
 			password:	data[3],
 			host:		new Domain(data[4]),
-			port:		data[5] ? new Port(data[5]) : null,
+			port:		new Port(data[5] || ReaLocation.defaults.port),
 			path:		data[6],
 			queryString:	new QS(data[7]),
 			hash:		data[8],
